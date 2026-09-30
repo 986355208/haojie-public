@@ -92,12 +92,17 @@ export class Island {
  this.fireflies.visible=false;
  }
  tree(x,z,s,i){const g=new THREE.Group();g.position.set(x,.1,z);g.scale.setScalar(s);this.scene.add(g);this.cylinder(.14,.23,1.65,0xc0a493,0,.85,0,g);const colors=[0xeabacf,0xb6d1ce,0xf0c7d5];const c=colors[i%3];this.ball(1.05,c,0,2.1,0,g);this.ball(.79,c,-.66,1.9,.08,g);this.ball(.85,c,.65,2,.12,g);this.ball(.8,c,.15,2.65,-.1,g);}
- fallback(parent,s){const g=new THREE.Group();g.scale.setScalar(s);parent.add(g);this.ball(.46,0xffeee8,0,.55,0,g);this.ball(.4,0xffeee8,0,1.1,0,g);for(const x of[-.19,.19]){this.ball(.15,0xffeee8,x,1.55,0,g).scale.y=2;this.ball(.035,0x6c798b,x,1.15,.35,g);}}
+ fallback(parent,s){const g=new THREE.Group();g.scale.setScalar(s);parent.add(g);this.ball(.46,0xffeee8,0,.55,0,g);this.ball(.4,0xffeee8,0,1.1,0,g);for(const x of[-.19,.19]){this.ball(.15,0xffeee8,x,1.55,0,g).scale.y=2;this.ball(.035,0x6c798b,x,1.15,.35,g);}return g;}
  pick(x,y){const rect=this.canvas.getBoundingClientRect();this.pointer.set((x-rect.left)/rect.width*2-1,-(y-rect.top)/rect.height*2+1);this.ray.setFromCamera(this.pointer,this.camera);const intersections=this.ray.intersectObjects(this.clickables,false);if(intersections.length){this.onPick(intersections[0].object.userData.target);return;}const p=new THREE.Vector3();if(this.ray.ray.intersectPlane(this.plane,p))this.onPick({kind:'ground',x:p.x,z:p.z});}
  setTarget(x,z){this.walkTarget=new THREE.Vector3(x,0,z);this.marker.position.set(x,.25,z);this.marker.visible=true;}
  clearGroup(g){while(g.children.length){const c=g.children[0];g.remove(c);c.traverse(m=>{if(m.geometry&&!m.geometry.userData.shared&&!([...this.geometries.values()].includes(m.geometry)))m.geometry.dispose();});}}
  async load(){
- const loader=new OBJLoader(),texture=new THREE.TextureLoader();const result=await Promise.allSettled([loader.loadAsync('./assets/hood-rabbit.obj'),texture.loadAsync('./assets/hood-rabbit.jpg'),loader.loadAsync('./assets/pet.obj'),texture.loadAsync('./assets/pet.jpg')]);
+ const loader=new OBJLoader(),texture=new THREE.TextureLoader();const requests=Promise.allSettled([loader.loadAsync('./assets/hood-rabbit.obj'),texture.loadAsync('./assets/hood-rabbit.jpg'),loader.loadAsync('./assets/pet.obj'),texture.loadAsync('./assets/pet.jpg')]);
+ // The rabbit OBJ is about 10 MB. On a slow mobile connection, don't leave the
+ // play button disabled forever while waiting for every model and texture.
+ const result=await Promise.race([requests,new Promise(resolve=>setTimeout(()=>resolve(null),9000))]);
+ const finishCargo=()=>{if(this.cargoRoot)return;this.cargoRoot=new THREE.Group();this.cargoRoot.position.set(0,.58,.47);this.petActor.add(this.cargoRoot);this.box(.65,.07,.49,0xb78e71,0,0,0,this.cargoRoot);for(const x of[-.31,.31])this.ball(.10,0xe6ba82,x,.56,.42,this.petActor);};
+ if(!result){this.characters.rabbit=this.fallback(this.actor,1);this.characters.pet=this.fallback(this.petActor,.58);finishCargo();return ['timeout','timeout','timeout','timeout'];}
  const place=(obj,height)=>{obj.updateMatrixWorld(true);const b=new THREE.Box3().setFromObject(obj),size=b.getSize(new THREE.Vector3()),center=b.getCenter(new THREE.Vector3()),scale=height/size.y;obj.position.set(-center.x*scale,-b.min.y*scale,-center.z*scale);obj.scale.setScalar(scale);const group=new THREE.Group();group.add(obj);return{group,b,size,center,scale};};
  this.gait={phase:{value:0},move:{value:0}};
  if(result[0].status==='fulfilled'){const obj=result[0].value,model=place(obj,1.85),map=result[1].status==='fulfilled'?result[1].value:null;if(map){map.colorSpace=THREE.SRGBColorSpace;map.anisotropy=4;}obj.traverse(m=>{if(m.isMesh){const material=new THREE.MeshStandardMaterial({map,color:map?0xffffff:0xf0b4ce,roughness:.86});material.onBeforeCompile=shader=>{shader.uniforms.uPhase=this.gait.phase;shader.uniforms.uMove=this.gait.move;shader.vertexShader='uniform float uPhase; uniform float uMove;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
@@ -109,9 +114,9 @@ export class Island {
  transformed.z+=gait*leg*uMove*${(.115/model.scale).toFixed(8)};
  transformed.y+=max(0.0,gait)*foot*uMove*${(.06/model.scale).toFixed(8)};
 `);};m.material=material;m.castShadow=true;m.receiveShadow=true;}});model.group.rotation.y=-Math.PI/2;this.characters.rabbit=model.group;this.actor.add(model.group);}
- else{this.fallback(this.actor,1);}
- if(result[2].status==='fulfilled'){const map=result[3].status==='fulfilled'?result[3].value:null;if(map){map.colorSpace=THREE.SRGBColorSpace;map.anisotropy=2;}const obj=result[2].value;obj.traverse(m=>{if(m.isMesh){m.material=new THREE.MeshStandardMaterial({map,color:map?0xffffff:0xf1d1ac,roughness:1});m.castShadow=true;}});const model=place(obj,1.13);model.group.rotation.y=0;this.characters.pet=model.group;this.petActor.add(model.group);}else this.fallback(this.petActor,.58);
- this.cargoRoot=new THREE.Group();this.cargoRoot.position.set(0,.58,.47);this.petActor.add(this.cargoRoot);this.box(.65,.07,.49,0xb78e71,0,0,0,this.cargoRoot);for(const x of[-.31,.31])this.ball(.10,0xe6ba82,x,.56,.42,this.petActor);
+ else{this.characters.rabbit=this.fallback(this.actor,1);}
+ if(result[2].status==='fulfilled'){const map=result[3].status==='fulfilled'?result[3].value:null;if(map){map.colorSpace=THREE.SRGBColorSpace;map.anisotropy=2;}const obj=result[2].value;obj.traverse(m=>{if(m.isMesh){m.material=new THREE.MeshStandardMaterial({map,color:map?0xffffff:0xf1d1ac,roughness:1});m.castShadow=true;}});const model=place(obj,1.13);model.group.rotation.y=0;this.characters.pet=model.group;this.petActor.add(model.group);}else this.characters.pet=this.fallback(this.petActor,.58);
+ finishCargo();
  return result.map(x=>x.status);
  }
  resize(){const w=this.canvas.clientWidth,h=this.canvas.clientHeight;this.renderer.setSize(w,h,false);const height=w<760?15.3*h/w:22;this.camera.left=-height*w/h/2;this.camera.right=height*w/h/2;this.camera.top=height/2;this.camera.bottom=-height/2;this.camera.updateProjectionMatrix();}
