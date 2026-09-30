@@ -1,5 +1,13 @@
 # 浩劫好时光
 
-手机版试玩： https://986355208.github.io/haojie-public/
+## 手机网页试玩
 
-打开链接后点“开始游戏”。手机使用左下角摇杆移动，也可以点地面行走；第一次打开后需要网络加载场景和音乐，后续会缓存游戏文件。音乐需点右上角音符开启。游戏进度保存在当前浏览器。
+https://986355208.github.io/haojie-public/
+
+## Android APK
+
+安装包下载： https://github.com/986355208/haojie-public/releases/latest/download/haojie-happy-times.apk
+
+每次推送 Android 游戏改动后，GitHub Actions 会先构建 APK，再在 Android 模拟器中启动并检查模型和 3D 场景，验收通过后才发布对应安装包。
+
+网页和 APK 都在首次启动加载/初始化后点“开始游戏”。手机用左下角摇杆移动，右上角音符控制音乐。APK 内置游戏资源，可离线游玩；手机网页首次加载需要网络。
